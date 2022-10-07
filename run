@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+java -cp .:target/fixture-1.0-SNAPSHOT-jar-with-dependencies.jar org.raisin.fixture.Fixture
+if [ $? -eq 0 ];then
+  sleep 10
+  ./check.sh
+fi

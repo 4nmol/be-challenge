@@ -1,3 +1,38 @@
+Solution
+================
+## How to run?
+* chmod u+x run
+* ./run
+
+## Design
+![alt text](design.png)
+
+## Approach
+* Using thread pools to improve throughput to consume records from source and to produce records to sink
+* Partitioning records using modulo operation to ensure record lands to same processor thread. Doing this to avoid synchronisation issues specific to a record
+* Each processor thread maintains state about each record it processes. If it sees another record which is already existing with it, then it will send it to producer threads as a joined record
+* When all records are read from a source say, A, all the records maintained so far for the other source, B, by a processor thread is flushed to sink as orphaned records. From this point on, any record received by processor thread from source A are not storead any more but are directly sent to sink as an orphaned node
+* When both the sources are read completely, then within 15 sec time, I am trying to send any pending orphaned records to the sink. These 15 seconds is what for which I tried to optimise heavily. I profiled the application and found that latency for Get and Post call from source and to sink is minimum (~6ms) when all thread pools are of size one. So I have optimized as per my machine.
+* There are some configurations in [ExecutionContext](src/main/java/org/raisin/fixture/ExecutionContext) file which can be tweaked accordingly to increase performance for larger datasets
+  * consumerThreadPoolSize - No of threads which will fetch records concurrently per source (usually it works best as the number of cores in a machine)
+  * producerThreadPoolSize - No of threads which will push records concurrently to sink
+  * processorThreads - No of threads which will concurrently process records received by consumer threads
+
+## Improvements
+* Fixture server can support HTTP/1.1 so that connection persistence can be used. Currently due to missing 'Content-Length' header and protocol version being HTTP/1.0, new sockets are being created for every call which is expensive
+* I have made the relevant changes in [fixture_3.py.bak](fixture_3.py.bak) file
+
+## Benchmarking
+### Machine Specification
+  * 2 core machine
+  * Application memory - 256 MB
+### Without server improvements
+  * I have tested this with 80K size dataset successfully
+  * On an average the job takes approximately 9 minutes to finish
+### With server improvements
+  * I have tested this with 150K size dataset successfully
+  * On an average the job takes approximately 16 minutes to finish
+
 Coding Challenge
 ================
 First notes about your program:
